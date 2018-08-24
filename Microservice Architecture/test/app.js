@@ -10,7 +10,7 @@ const goods = require('./goods.js');
 const purchases = require('./purchases.js');
 
 /*
-  HTTP 서버를 만들고 Request 처리
+  HTTP 서버를 만들고 Request 처리;
 */
 var server = http.createServer((req,res) => {
   var method = req.method;              // 메시지 얻어 옴
@@ -30,7 +30,7 @@ var server = http.createServer((req,res) => {
       if(req.headers['content-tpye'] == "application/json"){
         params = JSON.parse(body);
       }else{
-        params = querysting.parse(body);
+        params = querystring.parse(body);
       }
       onRequest(res,method,pathname,params);
     });
@@ -63,7 +63,7 @@ function onRequest(res,method,pathname,params){
       res.writeHead(404);
       return res.end();
   }
-  res.end("response!");
+  //res.end("response!");
 }
 
 /*

@@ -114,7 +114,7 @@ function unregister(method, pathname, params, cb){
   }else{
     var connection = mysql.createConnection(conn);
     connection.connect();
-    connecttion.query("delete from members where username = '" + params.username + "';", (error, results, fields) => {
+    connection.query("delete from members where username = '" + params.username + "';", (error, results, fields) => {
       if(error){
         response.errorcode = 1;
         response.errormessage = error;
