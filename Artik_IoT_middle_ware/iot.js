@@ -19,7 +19,8 @@ var mosca = require('mosca');                       // MQTT Broker, Client
 var net = require('net');                           // Socket
 var mqtt = require('mqtt');
 
-var mqttHost = "mqtt://35.221.120.219:5000";
+var mqttHost = "mqtt://35.221.120.219:5000"; // Google cloud MQTT Server ip
+//var mqttHost = "mqtt://192.168.0.3:1883"; // public :211.106.106.186:1883 - web socket: 9001
 
 var volt_flag = 0;
 var valArr = new Array();
@@ -168,7 +169,6 @@ server.on('published', function (packet, client) {
 
 //  Mosca Client ----------------------------------------------------------------
 var client = mqtt.connect(mqttHost);
-//var client = mqtt.connect("mqtt://192.168.0.3:1883"); // public :211.106.106.186:1883 - web socket: 9001
 
 // handle incoming message
 client.on('message', (topic, message, packet) => {
