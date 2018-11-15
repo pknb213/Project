@@ -1,6 +1,6 @@
 /**********************************************************************************
 *             2018_09_11 IoT.js                                                   *
-*			  Robot IoT Data Transmission (SI7021, BMA220)             								  *
+*			  Robot IoT Data Transmission (SI7021, BMA220, SDM120)             								  *
 *			  by CYJ	    v.1025							        		                          	  *
 *                                                                                 *
 *       1. Mosca Mqtt Transmission method                                         *
@@ -9,6 +9,8 @@
 *       4. Google cloud synchronization                                           *
 *       5. Artik cloud synchronization                                            *
 *       6. Chronograh synchronization                                             *
+*       7. Si7021, BMA220, SDM120 communication                                   *
+*                                                                                 *
 *                                                                                 *
 *                                                                                 *
 **********************************************************************************/
@@ -22,7 +24,7 @@ var mqtt = require('mqtt');
 var mqttHost = "mqtt://35.221.120.219:5000"; // Google cloud MQTT Server ip
 //var mqttHost = "mqtt://192.168.0.3:1883"; // public :211.106.106.186:1883 - web socket: 9001
 
-var volt_flag = 0;
+// 데이터 저장 용도 배열
 var valArr = new Array();
 
 // InfluxDB ----------------------------------------------------------------------
@@ -30,7 +32,7 @@ const Influx = require('influx');
 // Connect to a single host with a DSN:
 // const influx = new Influx.InfluxDB('http://user:password@host:8086/database')
 const influx = new Influx.InfluxDB({
-  host: '192.168.0.193',
+  host: '192.168.0.193', // Localhost
   database: 'testdb',
   port: 8086,
   // username : '',
@@ -39,9 +41,12 @@ const influx = new Influx.InfluxDB({
     {
       measurement: 'testKey',
       fields: {
+        seq: Influx.FieldType.DOUBLE,
+        gyroX: Influx.FieldType.INTEGER,
+        gyroY: Influx.FieldType.INTEGER,
+        gyroZ: Influx.FieldType.INTEGER,
         temper: Influx.FieldType.INTEGER,
         path: Influx.FieldType.STRING,
-        duration: Influx.FieldType.INTEGER
       },
       tags: [
         'host'
@@ -58,7 +63,9 @@ influx.getMeasurements().then(names =>
   console.log("My measurement names are : " + names.join(', '))
 );
 
+/* ------- 주기마다 Influx DB에 저장 --------
   var x = 0;
+
 setInterval (() => {
 
   x = x+1;
@@ -73,7 +80,7 @@ setInterval (() => {
 ]).catch(err => {console.log("err : ${err.stack}")});
   console.log("[InfluxDB] Inserting : " + x)
 }, 10000);
-
+*/
 /*
 influx.createContinuousQuery('sample','
   SELECT MEAN(cpu) INTO "7d"."perf"
@@ -134,33 +141,62 @@ server.on('published', function (packet, client) {
     {
         case "temp":
         {
-            var data = packet.payload.toString();
-            var obj = JSON.parse(data);
-            var val = JSON.stringify(obj.Temperature);
-            valArr[1] = val;
-            console.log("Vale(temp) : " + val);
+          var data = packet.payload.toString();
+          var obj = JSON.parse(data);
+          var _temp = parseFloat(JSON.stringify(obj.Temperature));
+          var _seq = parseInt(JSON.stringify(obj.Seq));
+          console.log("Val(temp) : " + _seq + " " + _temp);
+
+          influx.writeMeasurement('testdb', [
+            {
+            tags: { host: '192.168.0.193'},
+            fields: { seq: _seq, temper: _temp},
+            }
+          ]).catch(err => {console.log(`err : ${err.stack}`)});
+          console.log("[InfluxDB] Inserting : " + _seq + " " + _temp);
+          break;
         }
         case "gyro":
         {
-            var data = packet.payload.toString();
-            var obj = JSON.parse(data);
-            var val = JSON.stringify(obj.Gyro_X);
-            var val2 = JSON.stringify(obj.Gyro_Y);
-            var val3 = JSON.stringify(obj.Gyro_Z);
-            valArr[2] = val;
-            valArr[3] = val2;
-            valArr[4] = val3;
+          var data = packet.payload.toString();
+          var obj = JSON.parse(data);
+          var _gyroX = parseFloat(JSON.stringify(obj.Gyro_X));
+          var _gyroY = parseFloat(JSON.stringify(obj.Gyro_Y));
+          var _gyroZ = parseFloat(JSON.stringify(obj.Gyro_Z));
+          var _seq = parseInt(JSON.stringify(obj.Seq));
+          console.log("Val(gyro) : " + _seq + " " + _gyroX + "  " + _gyroY + "  " + _gyroZ);
 
-            console.log("Vale(gyro) : " + val + "  " + val2 + "  " + val3);
+          influx.writeMeasurement('testdb', [
+            {
+            tags: { host: '192.168.0.193'},
+            fields: { seq: _seq, gyroX: _gyroX, gyroY: _gyroY, gyroZ: _gyroZ},
+            }
+          ]).catch(err => {console.log(`err : ${err.stack}`)});
+          console.log("[InfluxDB] Inserting : " + _seq + " " + _gyroX + ' ' + _gyroY + ' ' + _gyroZ);
+          break;
         }
     }
-    if(cmdString[1] == "voltage")
+    if(cmdString[1] == "power")
     {
-        var data = packet.payload.toString();
-        console.log("voltage : " + data);
-        volt = data;
-        valArr[0] = volt;
-        volt_flag = 1;
+      var data = packet.payload.toString();
+      var _power = parseFloat(data);
+      if(_power != 0)
+      {
+          _power = _power / 1000;;
+      }
+      else
+      {
+          _power = 0;
+      }
+      console.log("Val(power) : " + _power);
+
+      influx.writeMeasurement('test02', [
+      {
+          tags: { host: '211.106.106.186'},
+          fields: { power: _power },
+      }
+      ]).catch(err => {console.log(`err : ${err.stack}`)});
+      console.log("[InfluxDB] Inserting : " + _power);
     }
 
     /* String Cut function : substring (start, end point)  substr(start, length) */
