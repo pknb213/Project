@@ -27,6 +27,19 @@ var mqttHost = "mqtt://35.221.120.219:5000"; // Google cloud MQTT Server ip
 // 데이터 저장 용도 배열
 var valArr = new Array();
 
+// Xlsx Module (Excel) -----------------------------------------------------------
+// Added workbook, lows, columns
+const workbook = xlsx.utils.book_new();
+let _rows1, _rows2, _rows3, _rows4 = 0;
+// Added worksheet
+const wsName = "SheetJS";
+const ws_data = Array.from(Array(8), () => Array());
+const ws = xlsx.utils.aoa_to_sheet(["Mini factoring] Excel file".split(" ")], ws_data);
+// 시트 추가
+xlsx.utils.book_append_sheet(workbook,ws,wsName);
+// 워크북 쓰기
+xlsx.writeFile(workbook, 'Log.xlsx');
+
 // InfluxDB ----------------------------------------------------------------------
 const Influx = require('influx');
 // Connect to a single host with a DSN:
@@ -147,6 +160,11 @@ server.on('published', function (packet, client) {
           var _seq = parseInt(JSON.stringify(obj.Seq));
           console.log("Val(temp) : " + _seq + " " + _temp);
 
+          // Xlsx
+          ws_data[0][_rows1] = _temperature;
+          ws_data[1][_rows1] = _seq;
+          _rows1++;
+
           influx.writeMeasurement('testdb', [
             {
             tags: { host: '192.168.0.193'},
@@ -202,6 +220,16 @@ server.on('published', function (packet, client) {
     /* String Cut function : substring (start, end point)  substr(start, length) */
     /* String Setch functon : indexOf("word")  lastIndexOf("word") */
 });
+
+// Auto excel writing function
+setInterval( () => {
+
+    if(!zigbeeConnection)
+    {
+        xlsx.utils.sheet_add_aoa(ws, ws_data, {origin:"A3"});
+        xlsx.writeFile(workbook, 'Log.xlsx');
+    }
+}, 60000);
 
 //  Mosca Client ----------------------------------------------------------------
 var client = mqtt.connect(mqttHost);
